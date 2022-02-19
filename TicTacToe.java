@@ -7,14 +7,12 @@ class Player{
 	String name;	//	Name of the player
 
 	private int games_won, games_lost, games_drawn;	//	Stats of the player
-	private int last_play;							//	Last box the player played at
 
 //	Construct for the class
 	Player(TicTacToe _t, int _type, String _name){
 		t = _t;
 		type = _type;
 		name = _name;
-		last_play = -1;
 		games_won = 0;
 		games_drawn = 0;
 		games_lost = 0;
@@ -52,149 +50,108 @@ class Player{
 				System.out.print("Enter a valid value int the range [1-9]: ");
 				box = scanner.nextInt() - 1;
 			}
-			last_play = box;
 			t.mark(box, sign, this);
 			return;
 		}
 	//	If Computer then analyze the board and make a suitable move according to it
 		if(type == 1){
-			int vertical;
-			int horizontal;
-			int diag;
-			if(last_play != -1){
-			// First see check if the player is able to win on this move
-				vertical = CheckVertical(last_play);
-				horizontal = CheckHorizontal(last_play);
-				diag = CheckDiagonal(last_play);
-				if(vertical != -1 && t.isEmpty(vertical)){
-					t.mark(vertical, sign, this);
-					last_play = vertical;
-					System.out.println(name + " has marked the box number: "+ (last_play+1));
-					return;
-				}
-				if(horizontal != -1 && t.isEmpty(horizontal)){
-					t.mark(horizontal, sign, this);
-					last_play = horizontal;
-					System.out.println(name + " has marked the box number: "+ (last_play+1));
-					return;
-				}
-				if(diag != -1 && t.isEmpty(diag)){
-					t.mark(diag, sign, this);
-					last_play = diag;
-					System.out.println(name + " has marked the box number: "+ (last_play+1));
-					return;
-				}
-			}
-		//	Check if the other player can win on the next move and stop it
-			vertical = CheckVertical(t.getLast());
-			horizontal = CheckHorizontal(t.getLast());
-			diag = CheckDiagonal(t.getLast());
-			if(vertical != -1 && t.isEmpty(vertical)){
-				t.mark(vertical, sign, this);
-				last_play = vertical;
-				System.out.println(name + " has marked the box number: "+ (last_play+1));
-				return;
-			}
-			if(horizontal != -1 && t.isEmpty(horizontal)){
-				t.mark(horizontal, sign, this);
-				last_play = horizontal;
-				System.out.println(name + " has marked the box number: "+ (last_play+1));
-				return;
-			}
-			if(diag != -1 && t.isEmpty(diag)){
-				t.mark(diag, sign, this);
-				last_play = diag;
-				System.out.println(name + " has marked the box number: "+ (last_play+1));
-				return;
-			}
-		//	If even the opponent cant win on the next move then mark the bx where it would be optimal to do so
-			if(t.isEmpty(4)){
-				t.mark(4, sign, this);
-				last_play = 4;
-			}else{
-				int a[];
-				int b[];
-				int corners[] = {0, 2, 6, 8};
-				int middle[] = {1, 3, 5, 7};
-				if(t.getValue(4) == sign){
-					a = middle;
-					b = corners;
-				}
-				else{
-					a = corners;
-					b = middle;
-				}
-
-				for(int i = 0; i < 4; i++){
-					if(t.isEmpty(a[i])){
-						t.mark(a[i], sign, this);
-						last_play = a[i];
-						System.out.println(name + " has marked the box number: "+ (last_play+1));
-						return;
+			int[][] board = new int[3][3];
+			t.getBoard(board);
+			int bestScore = -1;
+			int bestMove = 0;
+			for(int box = 0; box < 9; box++){
+				if(t.isEmpty(box)){
+					board[box/3][box%3] = sign;
+					int score = getScore(board, box, false);
+					board[box/3][box%3] = 0;
+					if(score > bestScore){
+						bestScore = score;
+						bestMove = box;
 					}
-				}
-				for(int i = 0; i < 4; i++){
-					if(t.isEmpty(b[i])){
-						t.mark(b[i], sign, this);
-						last_play = b[i];
-						System.out.println(name + " has marked the box number: "+ (last_play+1));
-						return;
+					if(score == 1){
+						break;
 					}
 				}
 			}
+			t.mark(bestMove, sign, this);
 		}
 	}
 
 /**************Private methods**************/
-	private int CheckVertical(int box){
-		int box_abv = 3*((box/3 + 1)%3) + (box%3);
-		int box_cur = 3*(box/3) + (box%3);
-		int box_blw = 3*((box/3 + 2)%3) + (box%3);
-		if(t.getValue(box_cur) == t.getValue(box_abv)){
-			return box_blw;
+
+	private int getScore(int[][] board, int box, boolean Maximise){
+		if(filledVertical(board, box) || filledHorizontal(board, box) || filledDiagonal(board, box)){
+			if(Maximise)	return -1;
+			else			return 1;
 		}
-		if(t.getValue(box_cur) == t.getValue(box_blw)){
-			return box_abv;
+		int bestScore;
+		if(Maximise){
+			bestScore = -10;
+			boolean filled = true;
+			for(int i = 0; i < 9; i++){
+				if(board[i/3][i%3] == 0){
+					filled = false;
+					board[i/3][i%3] = sign;
+					int score  = getScore(board, i, false);
+					board[i/3][i%3] = 0;
+					if(score == 1){
+						return 1;
+					}
+					if(score > bestScore){
+						bestScore = score;
+					}
+				}
+			}
+			if(filled)	return 0;
+			return bestScore;
+			// return -1;
+		}else{
+			bestScore = 10;
+			boolean filled = true;
+			for(int i = 0; i < 9; i++){
+				if(board[i/3][i%3] == 0){
+					filled = false;
+					board[i/3][i%3] = -1*sign;
+					int score = getScore(board, i, true);
+					board[i/3][i%3] = 0;
+					if(score == -1){
+						return -1;
+					}
+					if(score < bestScore){
+						bestScore = score;
+					}
+				}
+			}
+			if(filled)	return 0;
+			return bestScore;
+			// return 1;
 		}
-		return -1;
 	}
-	private int CheckHorizontal(int box){
-		int box_r = 3*(box/3) + ((box%3 + 1)%3);
-		int box_cur = 3*(box/3) + (box%3);
-		int box_l = 3*(box/3) + ((box%3 + 2)%3);
-		if(t.getValue(box_cur) == t.getValue(box_r)){
-			return box_l;
+
+	private boolean filledVertical(int[][] board, int box){
+		if(board[box/3][box%3] == board[(box/3 + 1)%3][box%3] && board[box/3][box%3] == board[(box/3 + 2)%3][box%3]){
+			return true;
 		}
-		if(t.getValue(box_cur) == t.getValue(box_l)){
-			return box_r;
-		}
-		return -1;
+		return false;
 	}
-	private int CheckDiagonal(int box){
-		int cur = 3*(box/3) + (box%3);
-		int cur_ld = 3*((box/3 + 1)%3) + ((box%3 + 2)%3);
-		int cur_rd = 3*((box/3 + 1)%3) + ((box%3 + 1)%3);
-		int cur_ru = 3*((box/3 + 2)%3) + ((box%3 + 1)%3);
-		int cur_lu = 3*((box/3 + 2)%3) + ((box%3 + 2)%3);
+	private boolean filledHorizontal(int[][] board, int box){
+		if(board[box/3][box%3] == board[box/3][(box%3 + 1)%3] && board[box/3][box%3] == board[box/3][(box%3 + 2)%3]){
+			return true;
+		}
+		return false;
+	}
+	private boolean filledDiagonal(int[][] board, int box){
 		if(box == 2 || box == 4 || box == 6){
-			if(t.getValue(cur) == t.getValue(cur_ld)){
-				return cur_ru;
+			if(board[0][2] == board[1][1] && board[1][1] == board[2][0]){
+				return true;
 			}
-			if(t.getValue(cur) == t.getValue(cur_ru)){
-				return cur_ld;
-			}
-			return -1;
 		}
 		if(box == 0 || box == 4 || box == 8){
-			if(t.getValue(cur) == t.getValue(cur_lu)){
-				return cur_rd;
+			if(board[0][0] == board[1][1] && board[1][1] == board[2][2]){
+				return true;
 			}
-			if(t.getValue(cur) == t.getValue(cur_rd)){
-				return cur_lu;
-			}
-			return -1;
 		}
-		return -1;
+		return false;
 	}
 }
 
@@ -240,8 +197,8 @@ public class TicTacToe{
 		}
 		else{
 			System.out.print("\nEnter your name: ");
-			p1 = new Player(t, 0, s.next());
-			p2 = new Player(t, 1, "Computer");
+			p2 = new Player(t, 0, s.next());
+			p1 = new Player(t, 1, "Computer");
 		}
 
 		//	Playing the game as long as the user wants to keep playing
@@ -274,7 +231,7 @@ public class TicTacToe{
 				Player other;
 				if(t.last_player == t.p[0])	other = t.p[1];
 				else						other = t.p[0];
-				System.out.println("Better luck next " + other.name + "!!");
+				System.out.println("Better luck next time" + other.name + "!!");
 				other.lost();
 			}
 			else{
@@ -465,5 +422,10 @@ public class TicTacToe{
 	}
 	int getStatus(){
 		return status;
+	}
+	void getBoard(int[][] copy_board){
+		for(int box = 0; box < 9; box++){
+			copy_board[box/3][box%3] = board[box/3][box%3];
+		}
 	}
 }
